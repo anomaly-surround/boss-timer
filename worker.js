@@ -121,10 +121,10 @@ async function handleScheduled(env) {
     const remaining = boss.nextSpawn - now;
     const alertMs = (boss.alertMinutes || 5) * 60000;
 
-    // Warning — also send if boss just spawned but warning was never sent
-    if (remaining <= alertMs && !alerts[boss.id]?.warned && boss.status === "waiting") {
+    // Warning — send when entering alert window
+    if (remaining > 0 && remaining <= alertMs && !alerts[boss.id]?.warned && boss.status === "waiting") {
       if (config.onWarning !== false && config.webhookUrl) {
-        const minLeft = Math.max(0, Math.round(remaining / 60000));
+        const minLeft = Math.max(1, Math.round(remaining / 60000));
         await sendDiscord(config.webhookUrl,
           `${boss.name} - Spawning Soon!`,
           `**${boss.name}** spawns in **${minLeft} minute${minLeft !== 1 ? 's' : ''}**!`,
@@ -133,10 +133,25 @@ async function handleScheduled(env) {
       }
       alerts[boss.id] = { ...(alerts[boss.id] || {}), warned: true };
       changed = true;
+      // Don't check spawn in the same run — wait for next cron
+      continue;
     }
 
     // Spawned
     if (remaining <= 0 && boss.status === "waiting") {
+      // Send warning first if it was never sent
+      if (!alerts[boss.id]?.warned && config.onWarning !== false && config.webhookUrl) {
+        await sendDiscord(config.webhookUrl,
+          `${boss.name} - Spawning Soon!`,
+          `**${boss.name}** is about to spawn!`,
+          16760576
+        );
+        alerts[boss.id] = { ...(alerts[boss.id] || {}), warned: true };
+        changed = true;
+        // Let spawn notification come on next cron run
+        continue;
+      }
+
       boss.status = "spawned";
       boss.spawnedAt = now;
       boss.autoResetAt = now + 5 * 60000;
@@ -307,6 +322,24 @@ async function handleRequest(request, env) {
     if (!config.webhookUrl) return json({ error: "No webhook URL" }, 400);
     await sendDiscord(config.webhookUrl, "Test Notification", "Boss timer webhook is working!", 5793266);
     return json({ ok: true });
+  }
+
+  // GET /api/debug — check alerts and timing
+  if (path === "/api/debug" && request.method === "GET") {
+    const bosses = JSON.parse(await env.BOSS_TIMER.get("bosses") || "[]");
+    const alerts = JSON.parse(await env.BOSS_TIMER.get("alerts") || "{}");
+    const config = JSON.parse(await env.BOSS_TIMER.get("config") || "{}");
+    const now = Date.now();
+    const debug = bosses.map(b => ({
+      name: b.name,
+      status: b.status,
+      remaining_min: Math.round((b.nextSpawn - now) / 60000 * 10) / 10,
+      alertMinutes: b.alertMinutes,
+      alerts: alerts[b.id] || {},
+      webhookSet: !!config.webhookUrl,
+      onWarning: config.onWarning,
+    }));
+    return json({ now, alerts, debug });
   }
 
   return json({ error: "Not found" }, 404);
