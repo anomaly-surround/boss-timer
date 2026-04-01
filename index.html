@@ -748,6 +748,7 @@
         let alertedBosses = new Set();
         let audioCtx = null;
         let connected = false;
+        let userRole = null;
 
         // --- API helpers ---
 
@@ -783,10 +784,12 @@
             const data = await api('GET', '/api/bosses');
             if (data) {
                 bosses = data.bosses || [];
+                userRole = data.role || 'viewer';
                 connected = true;
                 document.getElementById('setupStatus').innerHTML =
-                    '<div class="setup-status connected">Connected to server</div>';
-                showToast('Connected!');
+                    `<div class="setup-status connected">Connected as ${userRole}</div>`;
+                showToast(`Connected as ${userRole}!`);
+                applyRoleVisibility();
                 renderBosses();
                 initDiscord();
             } else {
@@ -836,6 +839,14 @@
         }
 
         // --- Collapsible sections ---
+
+        function applyRoleVisibility() {
+            const isAdmin = userRole === 'admin';
+            // Hide add boss and discord sections for viewers
+            document.querySelectorAll('.add-boss-section, .discord-section').forEach(el => {
+                el.style.display = isAdmin ? '' : 'none';
+            });
+        }
 
         function toggleBossList() {
             const list = document.getElementById('bossList');
@@ -1101,11 +1112,11 @@
                         </div>
                         ${statusBadge}
                         <div class="${countdownClass}">${countdownText}</div>
-                        <div class="boss-actions">
+                        ${userRole === 'admin' ? `<div class="boss-actions">
                             <button class="btn btn-kill" onclick="killBoss('${boss.id}')">Killed</button>
                             <button class="btn btn-edit-death" onclick="openDeathTimeModal('${boss.id}')">Set Death</button>
                             <button class="btn btn-delete" onclick="deleteBoss('${boss.id}')">Remove</button>
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
             });

@@ -5,7 +5,7 @@
  * and REST API for the frontend.
  *
  * KV keys: "bosses" (array), "config" (discord settings), "alerts" (sent notifications)
- * Env vars: AUTH_TOKEN (shared secret), BOSS_TIMER (KV namespace binding)
+ * Env vars: AUTH_TOKEN (admin), VIEW_TOKEN (read-only), BOSS_TIMER (KV namespace binding)
  */
 
 // --- Helpers ---
@@ -29,7 +29,9 @@ function cors() {
 
 function auth(request, env) {
   const token = (request.headers.get("Authorization") || "").replace("Bearer ", "");
-  return token === env.AUTH_TOKEN;
+  if (token === env.AUTH_TOKEN) return "admin";
+  if (token === env.VIEW_TOKEN) return "viewer";
+  return null;
 }
 
 // --- Next spawn calculators ---
@@ -191,15 +193,21 @@ async function handleRequest(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
 
-  // Auth check (except OPTIONS)
-  if (!auth(request, env)) {
+  // Auth check
+  const role = auth(request, env);
+  if (!role) {
     return json({ error: "Unauthorized" }, 401);
+  }
+
+  // Viewers can only GET
+  if (role === "viewer" && request.method !== "GET") {
+    return json({ error: "Read-only access" }, 403);
   }
 
   // GET /api/bosses
   if (path === "/api/bosses" && request.method === "GET") {
     const bosses = JSON.parse(await env.BOSS_TIMER.get("bosses") || "[]");
-    return json({ bosses });
+    return json({ bosses, role });
   }
 
   // POST /api/bosses
