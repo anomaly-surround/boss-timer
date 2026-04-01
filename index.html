@@ -561,30 +561,10 @@
     </div>
 
     <div class="container">
-        <!-- Boss Timers FIRST — visible immediately -->
-        <div class="controls-bar">
-            <h2>Boss Timers</h2>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <input type="text" id="bossSearch" placeholder="Search bosses..." oninput="renderBosses()" style="background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:6px 12px;border-radius:6px;font-size:0.85em;width:180px;">
-                <span class="sort-indicator">Sorted by next spawn</span>
-            </div>
-        </div>
-
-        <div class="boss-list" id="bossList">
-            <div class="empty-state">
-                <p>No bosses tracked yet</p>
-                <span>Add a boss below to start tracking</span>
-            </div>
-        </div>
-
-        <!-- Add Boss — collapsible -->
+        <!-- Add Boss — always visible at top -->
         <div class="add-boss-section">
-            <div class="collapsible-header" onclick="toggleSection('addBossBody', this)">
-                <h2>+ Add Boss</h2>
-                <span class="toggle-arrow">&#9660;</span>
-            </div>
-            <div class="collapsible-body" id="addBossBody">
-                <div class="form-row" style="margin-top:15px;">
+            <h2>+ Add Boss</h2>
+            <div class="form-row">
                     <div class="form-group" style="flex:2">
                         <label>Boss Name</label>
                         <input type="text" id="bossName" placeholder="e.g. Dragon Lord">
@@ -661,6 +641,21 @@
                         <button class="btn btn-primary" onclick="addBoss()">Add</button>
                     </div>
                 </div>
+        </div>
+
+        <!-- Boss Timers -->
+        <div class="controls-bar">
+            <h2>Boss Timers</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <input type="text" id="bossSearch" placeholder="Search bosses..." oninput="renderBosses()" style="background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:6px 12px;border-radius:6px;font-size:0.85em;width:180px;">
+                <span class="sort-indicator">Sorted by next spawn</span>
+            </div>
+        </div>
+
+        <div class="boss-list" id="bossList">
+            <div class="empty-state">
+                <p>No bosses tracked yet</p>
+                <span>Add a boss above to start tracking</span>
             </div>
         </div>
 
