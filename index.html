@@ -804,6 +804,9 @@
             document.getElementById('biweeklyGroup').style.display = type === 'biweekly' ? '' : 'none';
         }
 
+        // Track recently added boss IDs to suppress immediate alerts
+        const recentlyAdded = new Set();
+
         async function addBoss() {
             if (!connected) { showToast('Connect to server first'); return; }
             const name = document.getElementById('bossName').value.trim();
@@ -835,7 +838,18 @@
                 body.biweeklyDays = [{ day: day1, time: time1 }, { day: day2, time: time2 }];
             }
 
-            await api('POST', '/api/bosses', body);
+            const result = await api('POST', '/api/bosses', body);
+            if (result && result.boss) {
+                // Suppress alerts for this boss for 30 seconds
+                recentlyAdded.add(result.boss.id);
+                alertedBosses.add(result.boss.id + '_warn');
+                alertedBosses.add(result.boss.id + '_spawn');
+                setTimeout(() => {
+                    recentlyAdded.delete(result.boss.id);
+                    alertedBosses.delete(result.boss.id + '_warn');
+                    alertedBosses.delete(result.boss.id + '_spawn');
+                }, 30000);
+            }
             await fetchBosses();
             renderBosses();
 

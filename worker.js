@@ -222,6 +222,17 @@ async function handleRequest(request, env) {
 
     bosses.push(boss);
     await env.BOSS_TIMER.put("bosses", JSON.stringify(bosses));
+
+    // If boss starts inside the alert window, mark as already warned
+    // so the cron doesn't immediately fire a warning
+    const remaining = boss.nextSpawn - Date.now();
+    const alertMs = boss.alertMinutes * 60000;
+    if (remaining <= alertMs) {
+      const alerts = JSON.parse(await env.BOSS_TIMER.get("alerts") || "{}");
+      alerts[boss.id] = { warned: true };
+      await env.BOSS_TIMER.put("alerts", JSON.stringify(alerts));
+    }
+
     return json({ boss });
   }
 
