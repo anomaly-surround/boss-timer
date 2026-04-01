@@ -517,6 +517,30 @@
         .setup-status.connected { background: #064e3b; color: #34d399; }
         .setup-status.disconnected { background: #7f1d1d; color: #fca5a5; }
 
+        /* Boss list show more */
+        .boss-hidden {
+            display: none;
+        }
+
+        .boss-list.show-all .boss-hidden {
+            display: flex;
+        }
+
+        .boss-show-more {
+            width: 100%;
+            margin-top: 8px;
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .boss-show-more:hover {
+            background: #334155;
+            color: #e0e6f0;
+        }
+
         /* Collapsible sections */
         .collapsible-header {
             display: flex;
@@ -813,6 +837,12 @@
 
         // --- Collapsible sections ---
 
+        function toggleBossList() {
+            const list = document.getElementById('bossList');
+            list.classList.toggle('show-all');
+            renderBosses();
+        }
+
         function toggleSection(bodyId, headerEl) {
             const body = document.getElementById(bodyId);
             const arrow = headerEl.querySelector('.toggle-arrow');
@@ -1037,7 +1067,8 @@
                 return a.nextSpawn - b.nextSpawn;
             });
 
-            list.innerHTML = sorted.map(boss => {
+            const VISIBLE_COUNT = 5;
+            const cards = sorted.map((boss, index) => {
                 const now = Date.now();
                 const remaining = boss.nextSpawn - now;
                 const alertMs = boss.alertMinutes * 60000;
@@ -1047,6 +1078,7 @@
                 let cardClass = 'boss-card';
                 if (isSpawned || boss.status === 'spawned') cardClass += ' spawning';
                 else if (isWarning) cardClass += ' warning';
+                if (index >= VISIBLE_COUNT) cardClass += ' boss-hidden';
 
                 let countdownClass = 'boss-countdown active';
                 let countdownText = formatTime(remaining);
@@ -1076,7 +1108,21 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            });
+
+            let html = cards.join('');
+            if (sorted.length > VISIBLE_COUNT) {
+                const hiddenCount = sorted.length - VISIBLE_COUNT;
+                const expanded = document.getElementById('bossList')?.classList.contains('show-all');
+                html += `<button class="btn boss-show-more" onclick="toggleBossList()">
+                    ${expanded ? 'Show Less' : `Show ${hiddenCount} More`}
+                </button>`;
+            }
+            list.innerHTML = html;
+
+            if (document.getElementById('bossList')?.classList.contains('show-all')) {
+                list.querySelectorAll('.boss-hidden').forEach(el => el.style.display = '');
+            }
         }
 
         // --- Tick: update countdowns + local alerts ---
