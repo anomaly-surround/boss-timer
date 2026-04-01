@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Timer - Boss Timer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #e0e6f0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f1623 0%, #1a1040 100%);
+            border-bottom: 2px solid #2a1f5e;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa, #a78bfa);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s linear infinite;
+        }
+
+        .header p {
+            color: #7a8baa;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Add Boss Form */
+        .add-boss-section {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .add-boss-section h2 {
+            font-size: 1.1em;
+            color: #a78bfa;
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 0.75em;
+            color: #7a8baa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input, .form-group select {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e0e6f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #a78bfa;
+            box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #6366f1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #6d28d9, #4f46e5);
+            transform: translateY(-1px);
+        }
+
+        .btn-kill {
+            background: #065f46;
+            color: #34d399;
+            font-size: 0.8em;
+            padding: 5px 12px;
+        }
+
+        .btn-kill:hover { background: #047857; }
+
+        .btn-delete {
+            background: transparent;
+            color: #ef4444;
+            font-size: 0.8em;
+            padding: 5px 10px;
+            border: 1px solid #7f1d1d;
+        }
+
+        .btn-delete:hover { background: #7f1d1d33; }
+
+        .btn-edit-death {
+            background: #1e3a5f;
+            color: #60a5fa;
+            font-size: 0.8em;
+            padding: 5px 12px;
+        }
+
+        .btn-edit-death:hover { background: #1e4a7f; }
+
+        /* Death time modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal {
+            background: #111827;
+            border: 1px solid #2a1f5e;
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 320px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .modal h3 {
+            color: #a78bfa;
+            margin-bottom: 16px;
+            font-size: 1.1em;
+        }
+
+        .modal .form-group {
+            margin-bottom: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+
+        .btn-cancel {
+            background: #1e293b;
+            color: #94a3b8;
+        }
+
+        .btn-cancel:hover { background: #334155; }
+
+        .death-info {
+            font-size: 0.75em;
+            color: #f59e0b;
+            margin-top: 2px;
+        }
+
+        /* Discord settings */
+        .discord-section {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .discord-section h2 {
+            font-size: 1.1em;
+            color: #5865F2;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .discord-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+        }
+
+        .discord-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .discord-row .form-group {
+            flex: 1;
+        }
+
+        .discord-status {
+            font-size: 0.8em;
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .discord-status.connected {
+            background: #064e3b;
+            color: #34d399;
+        }
+
+        .discord-status.disconnected {
+            background: #1e293b;
+            color: #64748b;
+        }
+
+        .btn-discord {
+            background: #5865F2;
+            color: white;
+        }
+
+        .btn-discord:hover {
+            background: #4752C4;
+        }
+
+        .btn-discord-test {
+            background: #1e293b;
+            color: #5865F2;
+            border: 1px solid #5865F2;
+        }
+
+        .btn-discord-test:hover {
+            background: #5865F233;
+        }
+
+        .btn-discord-remove {
+            background: transparent;
+            color: #ef4444;
+            font-size: 0.8em;
+            padding: 5px 10px;
+        }
+
+        .btn-discord-remove:hover { color: #f87171; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #94a3b8;
+        }
+
+        .toggle-row input[type="checkbox"] {
+            accent-color: #5865F2;
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Boss List */
+        .boss-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .boss-card {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .boss-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #334155;
+            transition: background 0.3s;
+        }
+
+        .boss-card.spawning::before {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        .boss-card.warning::before {
+            background: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+
+        .boss-card.spawning {
+            border-color: #7f1d1d;
+            animation: pulse-red 1.5s ease-in-out infinite;
+        }
+
+        .boss-card.warning {
+            border-color: #78350f;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+        }
+
+        .boss-info {
+            flex: 1;
+        }
+
+        .boss-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #e0e6f0;
+        }
+
+        .boss-meta {
+            font-size: 0.8em;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .boss-countdown {
+            font-size: 1.8em;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            min-width: 130px;
+            text-align: right;
+        }
+
+        .boss-countdown.active {
+            color: #34d399;
+        }
+
+        .boss-countdown.warning-text {
+            color: #f59e0b;
+        }
+
+        .boss-countdown.spawned {
+            color: #ef4444;
+        }
+
+        .boss-actions {
+            display: flex;
+            gap: 6px;
+            flex-direction: column;
+        }
+
+        .status-badge {
+            font-size: 0.7em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.spawned {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .status-badge.waiting {
+            background: #064e3b;
+            color: #6ee7b7;
+        }
+
+        .status-badge.auto-reset {
+            background: #78350f;
+            color: #fcd34d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #475569;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .controls-bar h2 {
+            font-size: 1em;
+            color: #94a3b8;
+        }
+
+        .sort-indicator {
+            font-size: 0.8em;
+            color: #64748b;
+        }
+
+        /* Alert time input */
+        .alert-time-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75em;
+            color: #64748b;
+        }
+
+        .alert-time-group input {
+            width: 40px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e0e6f0;
+            padding: 2px 4px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        /* Notification toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: #1e293b;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #fcd34d;
+            font-weight: 600;
+            animation: slide-in 0.3s ease-out;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .form-row { flex-direction: column; }
+            .boss-card { flex-wrap: wrap; }
+            .boss-countdown { font-size: 1.4em; min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Anomaly Timer</h1>
+        <p>Boss Spawn Timer</p>
+    </div>
+
+    <div class="container">
+        <div class="add-boss-section">
+            <h2>+ Add Boss</h2>
+            <div class="form-row">
+                <div class="form-group" style="flex:2">
+                    <label>Boss Name</label>
+                    <input type="text" id="bossName" placeholder="e.g. Dragon Lord">
+                </div>
+                <div class="form-group">
+                    <label>Spawn Type</label>
+                    <select id="spawnType" onchange="toggleSpawnInputs()">
+                        <option value="interval">Repeating Interval</option>
+                        <option value="fixed">Fixed Time of Day</option>
+                        <option value="weekly">Fixed Day of Week</option>
+                        <option value="biweekly">Twice a Week</option>
+                    </select>
+                </div>
+                <div class="form-group" id="intervalGroup">
+                    <label>Interval</label>
+                    <div style="display:flex;gap:5px;">
+                        <input type="number" id="intervalHours" placeholder="H" min="0" style="width:55px">
+                        <input type="number" id="intervalMinutes" placeholder="M" min="0" max="59" style="width:55px">
+                    </div>
+                </div>
+                <div class="form-group" id="fixedGroup" style="display:none">
+                    <label>Spawn Time</label>
+                    <input type="time" id="fixedTime">
+                </div>
+                <div class="form-group" id="weeklyGroup" style="display:none">
+                    <label>Day & Time</label>
+                    <div style="display:flex;gap:5px;">
+                        <select id="weeklyDay">
+                            <option value="0">Sunday</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                        </select>
+                        <input type="time" id="weeklyTime">
+                    </div>
+                </div>
+                <div class="form-group" id="biweeklyGroup" style="display:none">
+                    <label>Day 1 & Day 2</label>
+                    <div style="display:flex;flex-direction:column;gap:5px;">
+                        <div style="display:flex;gap:5px;">
+                            <select id="biweeklyDay1">
+                                <option value="0">Sun</option>
+                                <option value="1">Mon</option>
+                                <option value="2">Tue</option>
+                                <option value="3">Wed</option>
+                                <option value="4">Thu</option>
+                                <option value="5">Fri</option>
+                                <option value="6">Sat</option>
+                            </select>
+                            <input type="time" id="biweeklyTime1">
+                        </div>
+                        <div style="display:flex;gap:5px;">
+                            <select id="biweeklyDay2">
+                                <option value="0">Sun</option>
+                                <option value="1">Mon</option>
+                                <option value="2">Tue</option>
+                                <option value="3">Wed</option>
+                                <option value="4">Thu</option>
+                                <option value="5">Fri</option>
+                                <option value="6">Sat</option>
+                            </select>
+                            <input type="time" id="biweeklyTime2">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Alert (min)</label>
+                    <input type="number" id="alertMinutes" value="5" min="1" max="60" style="width:55px">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="addBoss()">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="discord-section">
+            <h2>
+                <svg class="discord-icon" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                Discord Webhook
+            </h2>
+            <div class="discord-row">
+                <div class="form-group">
+                    <label>Webhook URL</label>
+                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." value="">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-discord" onclick="saveDiscordWebhook()">Save</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-discord-test" onclick="testDiscordWebhook()">Test</button>
+                </div>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="discordOnWarning" checked onchange="saveDiscordSettings()">
+                <label for="discordOnWarning">Notify on warning (before spawn)</label>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="discordOnSpawn" checked onchange="saveDiscordSettings()">
+                <label for="discordOnSpawn">Notify on spawn</label>
+            </div>
+            <div id="discordStatus"></div>
+        </div>
+
+        <div class="controls-bar">
+            <h2>Boss Timers</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <input type="text" id="bossSearch" placeholder="Search bosses..." oninput="renderBosses()" style="background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:6px 12px;border-radius:6px;font-size:0.85em;width:180px;">
+                <span class="sort-indicator">Sorted by next spawn</span>
+            </div>
+        </div>
+
+        <div class="boss-list" id="bossList">
+            <div class="empty-state">
+                <p>No bosses tracked yet</p>
+                <span>Add a boss above to start tracking</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <div id="deathModal"></div>
+
+    <script>
+        let bosses = JSON.parse(localStorage.getItem('anomaly_bosses') || '[]');
+        let alertedBosses = new Set();
+        let audioCtx = null;
+
+        // Discord webhook
+        let discordSettings = JSON.parse(localStorage.getItem('anomaly_discord') || '{}');
+
+        function initDiscord() {
+            const input = document.getElementById('discordWebhook');
+            if (discordSettings.webhookUrl) {
+                input.value = discordSettings.webhookUrl;
+            }
+            document.getElementById('discordOnWarning').checked = discordSettings.onWarning !== false;
+            document.getElementById('discordOnSpawn').checked = discordSettings.onSpawn !== false;
+            updateDiscordStatus();
+        }
+
+        function saveDiscordWebhook() {
+            const url = document.getElementById('discordWebhook').value.trim();
+            discordSettings.webhookUrl = url;
+            saveDiscordSettings();
+            updateDiscordStatus();
+            showToast(url ? 'Discord webhook saved' : 'Discord webhook removed');
+        }
+
+        function saveDiscordSettings() {
+            discordSettings.onWarning = document.getElementById('discordOnWarning').checked;
+            discordSettings.onSpawn = document.getElementById('discordOnSpawn').checked;
+            localStorage.setItem('anomaly_discord', JSON.stringify(discordSettings));
+        }
+
+        function updateDiscordStatus() {
+            const el = document.getElementById('discordStatus');
+            if (discordSettings.webhookUrl) {
+                el.innerHTML = '<div class="discord-status connected">Webhook connected</div>';
+            } else {
+                el.innerHTML = '<div class="discord-status disconnected">No webhook configured</div>';
+            }
+        }
+
+        function sendDiscordMessage(title, description, color) {
+            if (!discordSettings.webhookUrl) return;
+
+            const payload = {
+                embeds: [{
+                    title: title,
+                    description: description,
+                    color: color,
+                    footer: { text: 'Anomaly Timer - Boss Timer' },
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            fetch(discordSettings.webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => {
+                console.error('Discord webhook error:', err);
+                showToast('Discord notification failed');
+            });
+        }
+
+        function testDiscordWebhook() {
+            if (!discordSettings.webhookUrl) {
+                showToast('No webhook URL set');
+                return;
+            }
+            sendDiscordMessage(
+                'Test Notification',
+                'Boss timer webhook is working!',
+                5793266 // Discord blurple
+            );
+            showToast('Test message sent to Discord');
+        }
+
+        function getAudioContext() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playAlertSound() {
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+
+                // Two-tone alert
+                for (let i = 0; i < 3; i++) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = i % 2 === 0 ? 880 : 660;
+                    gain.gain.setValueAtTime(0.15, now + i * 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.2 + 0.18);
+                    osc.start(now + i * 0.2);
+                    osc.stop(now + i * 0.2 + 0.2);
+                }
+            } catch (e) {
+                console.log('Audio not available');
+            }
+        }
+
+        function toggleSpawnInputs() {
+            const type = document.getElementById('spawnType').value;
+            document.getElementById('intervalGroup').style.display = type === 'interval' ? '' : 'none';
+            document.getElementById('fixedGroup').style.display = type === 'fixed' ? '' : 'none';
+            document.getElementById('weeklyGroup').style.display = type === 'weekly' ? '' : 'none';
+            document.getElementById('biweeklyGroup').style.display = type === 'biweekly' ? '' : 'none';
+        }
+
+        function addBoss() {
+            const name = document.getElementById('bossName').value.trim();
+            if (!name) return;
+
+            const type = document.getElementById('spawnType').value;
+            const alertMin = parseInt(document.getElementById('alertMinutes').value) || 5;
+
+            let boss = {
+                id: Date.now().toString(),
+                name,
+                type,
+                alertMinutes: alertMin,
+                status: 'waiting', // waiting, spawned, auto-reset
+                spawnedAt: null,
+            };
+
+            if (type === 'interval') {
+                const h = parseInt(document.getElementById('intervalHours').value) || 0;
+                const m = parseInt(document.getElementById('intervalMinutes').value) || 0;
+                if (h === 0 && m === 0) return;
+                boss.intervalMs = (h * 3600 + m * 60) * 1000;
+                boss.nextSpawn = Date.now() + boss.intervalMs;
+            } else if (type === 'fixed') {
+                const timeStr = document.getElementById('fixedTime').value;
+                if (!timeStr) return;
+                boss.fixedTime = timeStr;
+                boss.nextSpawn = getNextFixedSpawn(timeStr);
+            } else if (type === 'weekly') {
+                const day = parseInt(document.getElementById('weeklyDay').value);
+                const timeStr = document.getElementById('weeklyTime').value;
+                if (!timeStr) return;
+                boss.weeklyDay = day;
+                boss.weeklyTime = timeStr;
+                boss.nextSpawn = getNextWeeklySpawn(day, timeStr);
+            } else if (type === 'biweekly') {
+                const day1 = parseInt(document.getElementById('biweeklyDay1').value);
+                const time1 = document.getElementById('biweeklyTime1').value;
+                const day2 = parseInt(document.getElementById('biweeklyDay2').value);
+                const time2 = document.getElementById('biweeklyTime2').value;
+                if (!time1 || !time2) return;
+                boss.biweeklyDays = [{ day: day1, time: time1 }, { day: day2, time: time2 }];
+                boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
+            }
+
+            bosses.push(boss);
+            saveBosses();
+            renderBosses();
+
+            // Reset form
+            document.getElementById('bossName').value = '';
+            document.getElementById('intervalHours').value = '';
+            document.getElementById('intervalMinutes').value = '';
+        }
+
+        function getNextFixedSpawn(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            const now = new Date();
+            const spawn = new Date();
+            spawn.setHours(h, m, 0, 0);
+            if (spawn <= now) spawn.setDate(spawn.getDate() + 1);
+            return spawn.getTime();
+        }
+
+        function getNextWeeklySpawn(targetDay, timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            const now = new Date();
+            const spawn = new Date();
+            spawn.setHours(h, m, 0, 0);
+
+            const currentDay = now.getDay();
+            let daysUntil = targetDay - currentDay;
+            if (daysUntil < 0) daysUntil += 7;
+            if (daysUntil === 0 && spawn <= now) daysUntil = 7;
+
+            spawn.setDate(spawn.getDate() + daysUntil);
+            return spawn.getTime();
+        }
+
+        function getNextBiweeklySpawn(days) {
+            const spawns = days.map(d => getNextWeeklySpawn(d.day, d.time));
+            return Math.min(...spawns);
+        }
+
+        function killBoss(id) {
+            killBossAt(id, Date.now());
+        }
+
+        function killBossAt(id, deathTime) {
+            const boss = bosses.find(b => b.id === id);
+            if (!boss) return;
+
+            boss.status = 'waiting';
+            boss.spawnedAt = null;
+            boss.autoResetAt = null;
+            boss.lastDeath = deathTime;
+            alertedBosses.delete(id);
+
+            if (boss.type === 'interval') {
+                boss.nextSpawn = deathTime + boss.intervalMs;
+            } else if (boss.type === 'fixed') {
+                boss.nextSpawn = getNextFixedSpawn(boss.fixedTime);
+            } else if (boss.type === 'weekly') {
+                boss.nextSpawn = getNextWeeklySpawn(boss.weeklyDay, boss.weeklyTime);
+            } else if (boss.type === 'biweekly') {
+                boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
+            }
+
+            saveBosses();
+            renderBosses();
+        }
+
+        function openDeathTimeModal(id) {
+            const boss = bosses.find(b => b.id === id);
+            if (!boss) return;
+
+            const now = new Date();
+            const defaultDate = now.toISOString().slice(0, 10);
+            const defaultTime = now.toTimeString().slice(0, 5);
+
+            document.getElementById('deathModal').innerHTML = `
+                <div class="modal-overlay" onclick="closeDeathModal(event)">
+                    <div class="modal" onclick="event.stopPropagation()">
+                        <h3>Set Death Time: ${boss.name}</h3>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="deathDate" value="${defaultDate}">
+                        </div>
+                        <div class="form-group">
+                            <label>Time</label>
+                            <input type="time" id="deathTime" value="${defaultTime}" step="60">
+                        </div>
+                        <div class="modal-buttons">
+                            <button class="btn btn-cancel" onclick="closeDeathModal()">Cancel</button>
+                            <button class="btn btn-primary" onclick="confirmDeathTime('${id}')">Set Death Time</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeDeathModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('deathModal').innerHTML = '';
+        }
+
+        function confirmDeathTime(id) {
+            const dateVal = document.getElementById('deathDate').value;
+            const timeVal = document.getElementById('deathTime').value;
+            if (!dateVal || !timeVal) return;
+
+            const deathTime = new Date(`${dateVal}T${timeVal}`).getTime();
+            if (isNaN(deathTime)) return;
+
+            killBossAt(id, deathTime);
+            closeDeathModal();
+            showToast('Death time updated');
+        }
+
+        function deleteBoss(id) {
+            bosses = bosses.filter(b => b.id !== id);
+            alertedBosses.delete(id);
+            saveBosses();
+            renderBosses();
+        }
+
+        function updateAlertTime(id, value) {
+            const boss = bosses.find(b => b.id === id);
+            if (boss) {
+                boss.alertMinutes = Math.max(1, parseInt(value) || 5);
+                saveBosses();
+            }
+        }
+
+        function saveBosses() {
+            localStorage.setItem('anomaly_bosses', JSON.stringify(bosses));
+        }
+
+        function formatTime(ms) {
+            if (ms <= 0) return '00:00';
+            const totalSec = Math.floor(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            if (h > 0) {
+                return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        function formatMeta(boss) {
+            if (boss.type === 'interval') {
+                const totalMin = boss.intervalMs / 60000;
+                const h = Math.floor(totalMin / 60);
+                const m = totalMin % 60;
+                let str = 'Every ';
+                if (h > 0) str += `${h}h `;
+                if (m > 0) str += `${m}m`;
+                return str.trim();
+            } else if (boss.type === 'weekly') {
+                return `Every ${dayNames[boss.weeklyDay]} at ${boss.weeklyTime}`;
+            } else if (boss.type === 'biweekly') {
+                const d = boss.biweeklyDays;
+                return `${dayNames[d[0].day]} ${d[0].time} & ${dayNames[d[1].day]} ${d[1].time}`;
+            } else {
+                return `Daily at ${boss.fixedTime}`;
+            }
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        function renderBosses() {
+            const list = document.getElementById('bossList');
+
+            if (bosses.length === 0) {
+                list.innerHTML = '<div class="empty-state"><p>No bosses tracked yet</p><span>Add a boss above to start tracking</span></div>';
+                return;
+            }
+
+            // Filter by search
+            const search = (document.getElementById('bossSearch').value || '').toLowerCase();
+            const filtered = search ? bosses.filter(b => b.name.toLowerCase().includes(search)) : bosses;
+
+            if (filtered.length === 0 && search) {
+                list.innerHTML = '<div class="empty-state"><p>No bosses match your search</p></div>';
+                return;
+            }
+
+            // Sort by next spawn time
+            const sorted = [...filtered].sort((a, b) => {
+                // Spawned bosses go to top
+                if (a.status === 'spawned' && b.status !== 'spawned') return -1;
+                if (b.status === 'spawned' && a.status !== 'spawned') return 1;
+                return a.nextSpawn - b.nextSpawn;
+            });
+
+            list.innerHTML = sorted.map(boss => {
+                const now = Date.now();
+                const remaining = boss.nextSpawn - now;
+                const alertMs = boss.alertMinutes * 60000;
+                const isWarning = remaining > 0 && remaining <= alertMs;
+                const isSpawned = remaining <= 0;
+
+                let cardClass = 'boss-card';
+                if (isSpawned || boss.status === 'spawned') cardClass += ' spawning';
+                else if (isWarning) cardClass += ' warning';
+
+                let countdownClass = 'boss-countdown active';
+                let countdownText = formatTime(remaining);
+                let statusBadge = '<span class="status-badge waiting">Waiting</span>';
+
+                if (isSpawned || boss.status === 'spawned') {
+                    countdownClass = 'boss-countdown spawned';
+                    countdownText = 'SPAWNED';
+                    statusBadge = '<span class="status-badge spawned">Spawned!</span>';
+
+                    if (boss.status === 'auto-reset') {
+                        const autoRemaining = boss.autoResetAt - now;
+                        if (autoRemaining > 0) {
+                            countdownText = `RESET ${formatTime(autoRemaining)}`;
+                            statusBadge = '<span class="status-badge auto-reset">Auto-reset</span>';
+                        }
+                    }
+                } else if (isWarning) {
+                    countdownClass = 'boss-countdown warning-text';
+                }
+
+                return `
+                    <div class="${cardClass}" data-id="${boss.id}">
+                        <div class="boss-info">
+                            <div class="boss-name">${boss.name}</div>
+                            <div class="boss-meta">${formatMeta(boss)} | Alert: ${boss.alertMinutes}m before</div>
+                            ${boss.lastDeath ? `<div class="death-info">Last killed: ${new Date(boss.lastDeath).toLocaleString()}</div>` : ''}
+                        </div>
+                        ${statusBadge}
+                        <div class="${countdownClass}">${countdownText}</div>
+                        <div class="boss-actions">
+                            <button class="btn btn-kill" onclick="killBoss('${boss.id}')">Killed</button>
+                            <button class="btn btn-edit-death" onclick="openDeathTimeModal('${boss.id}')">Set Death</button>
+                            <button class="btn btn-delete" onclick="deleteBoss('${boss.id}')">Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function tick() {
+            const now = Date.now();
+
+            bosses.forEach(boss => {
+                const remaining = boss.nextSpawn - now;
+                const alertMs = boss.alertMinutes * 60000;
+
+                // Warning alert
+                if (remaining > 0 && remaining <= alertMs && !alertedBosses.has(boss.id)) {
+                    alertedBosses.add(boss.id);
+                    playAlertSound();
+                    showToast(`${boss.name} spawns in ${boss.alertMinutes} minutes!`);
+                    if (discordSettings.onWarning !== false) {
+                        sendDiscordMessage(
+                            `${boss.name} - Spawning Soon!`,
+                            `**${boss.name}** spawns in **${boss.alertMinutes} minutes**!\n${formatMeta(boss)}`,
+                            16760576 // orange/yellow
+                        );
+                    }
+                }
+
+                // Boss has spawned
+                if (remaining <= 0 && boss.status === 'waiting') {
+                    boss.status = 'spawned';
+                    boss.spawnedAt = now;
+                    boss.autoResetAt = now + 5 * 60000; // 5 min auto-reset
+                    playAlertSound();
+                    showToast(`${boss.name} has SPAWNED!`);
+                    if (discordSettings.onSpawn !== false) {
+                        sendDiscordMessage(
+                            `${boss.name} has SPAWNED!`,
+                            `**${boss.name}** is now available!\n${formatMeta(boss)}\nAuto-reset in 5 minutes if not killed.`,
+                            15548997 // red
+                        );
+                    }
+                }
+
+                // Auto-reset after 5 minutes
+                if (boss.status === 'spawned' && boss.autoResetAt && now >= boss.autoResetAt) {
+                    boss.status = 'waiting';
+                    boss.spawnedAt = null;
+                    boss.autoResetAt = null;
+                    alertedBosses.delete(boss.id);
+
+                    if (boss.type === 'interval') {
+                        boss.nextSpawn = now + boss.intervalMs;
+                    } else if (boss.type === 'fixed') {
+                        boss.nextSpawn = getNextFixedSpawn(boss.fixedTime);
+                    } else if (boss.type === 'weekly') {
+                        boss.nextSpawn = getNextWeeklySpawn(boss.weeklyDay, boss.weeklyTime);
+                    } else if (boss.type === 'biweekly') {
+                        boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
+                    }
+
+                    saveBosses();
+                }
+            });
+
+            renderBosses();
+        }
+
+        // Initial render
+        initDiscord();
+        renderBosses();
+
+        // Update every second
+        setInterval(tick, 1000);
+
+        // Enable audio on first interaction
+        document.addEventListener('click', () => {
+            if (!audioCtx) getAudioContext();
+        }, { once: true });
+    </script>
+</body>
+</html>
