@@ -121,12 +121,13 @@ async function handleScheduled(env) {
     const remaining = boss.nextSpawn - now;
     const alertMs = (boss.alertMinutes || 5) * 60000;
 
-    // Warning
-    if (remaining > 0 && remaining <= alertMs && !alerts[boss.id]?.warned) {
+    // Warning — also send if boss just spawned but warning was never sent
+    if (remaining <= alertMs && !alerts[boss.id]?.warned && boss.status === "waiting") {
       if (config.onWarning !== false && config.webhookUrl) {
+        const minLeft = Math.max(0, Math.round(remaining / 60000));
         await sendDiscord(config.webhookUrl,
           `${boss.name} - Spawning Soon!`,
-          `**${boss.name}** spawns in **${boss.alertMinutes} minutes**!`,
+          `**${boss.name}** spawns in **${minLeft} minute${minLeft !== 1 ? 's' : ''}**!`,
           16760576
         );
       }
