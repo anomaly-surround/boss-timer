@@ -517,6 +517,35 @@
         .setup-status.connected { background: #064e3b; color: #34d399; }
         .setup-status.disconnected { background: #7f1d1d; color: #fca5a5; }
 
+        /* Collapsible sections */
+        .collapsible-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .collapsible-header .toggle-arrow {
+            font-size: 0.8em;
+            color: #64748b;
+            transition: transform 0.2s;
+        }
+
+        .collapsible-header .toggle-arrow.open {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-body {
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapsible-body.open {
+            max-height: 600px;
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             .form-row { flex-direction: column; }
@@ -532,129 +561,7 @@
     </div>
 
     <div class="container">
-        <div class="setup-section" id="setupSection">
-            <h2>Server Connection</h2>
-            <div class="setup-row">
-                <div class="form-group">
-                    <label>Auth Token</label>
-                    <input type="password" id="authToken" placeholder="Your auth token">
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" onclick="connectServer()">Connect</button>
-                </div>
-            </div>
-            <div id="setupStatus"></div>
-        </div>
-
-        <div class="add-boss-section">
-            <h2>+ Add Boss</h2>
-            <div class="form-row">
-                <div class="form-group" style="flex:2">
-                    <label>Boss Name</label>
-                    <input type="text" id="bossName" placeholder="e.g. Dragon Lord">
-                </div>
-                <div class="form-group">
-                    <label>Spawn Type</label>
-                    <select id="spawnType" onchange="toggleSpawnInputs()">
-                        <option value="interval">Repeating Interval</option>
-                        <option value="fixed">Fixed Time of Day</option>
-                        <option value="weekly">Fixed Day of Week</option>
-                        <option value="biweekly">Twice a Week</option>
-                    </select>
-                </div>
-                <div class="form-group" id="intervalGroup">
-                    <label>Interval</label>
-                    <div style="display:flex;gap:5px;">
-                        <input type="number" id="intervalHours" placeholder="H" min="0" style="width:55px">
-                        <input type="number" id="intervalMinutes" placeholder="M" min="0" max="59" style="width:55px">
-                    </div>
-                </div>
-                <div class="form-group" id="fixedGroup" style="display:none">
-                    <label>Spawn Time</label>
-                    <input type="time" id="fixedTime">
-                </div>
-                <div class="form-group" id="weeklyGroup" style="display:none">
-                    <label>Day & Time</label>
-                    <div style="display:flex;gap:5px;">
-                        <select id="weeklyDay">
-                            <option value="0">Sunday</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                        </select>
-                        <input type="time" id="weeklyTime">
-                    </div>
-                </div>
-                <div class="form-group" id="biweeklyGroup" style="display:none">
-                    <label>Day 1 & Day 2</label>
-                    <div style="display:flex;flex-direction:column;gap:5px;">
-                        <div style="display:flex;gap:5px;">
-                            <select id="biweeklyDay1">
-                                <option value="0">Sun</option>
-                                <option value="1">Mon</option>
-                                <option value="2">Tue</option>
-                                <option value="3">Wed</option>
-                                <option value="4">Thu</option>
-                                <option value="5">Fri</option>
-                                <option value="6">Sat</option>
-                            </select>
-                            <input type="time" id="biweeklyTime1">
-                        </div>
-                        <div style="display:flex;gap:5px;">
-                            <select id="biweeklyDay2">
-                                <option value="0">Sun</option>
-                                <option value="1">Mon</option>
-                                <option value="2">Tue</option>
-                                <option value="3">Wed</option>
-                                <option value="4">Thu</option>
-                                <option value="5">Fri</option>
-                                <option value="6">Sat</option>
-                            </select>
-                            <input type="time" id="biweeklyTime2">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Alert (min)</label>
-                    <input type="number" id="alertMinutes" value="5" min="1" max="60" style="width:55px">
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-primary" onclick="addBoss()">Add</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="discord-section">
-            <h2>
-                <svg class="discord-icon" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-                Discord Webhook
-            </h2>
-            <div class="discord-row">
-                <div class="form-group">
-                    <label>Webhook URL</label>
-                    <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." value="">
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-discord" onclick="saveDiscordWebhook()">Save</button>
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-discord-test" onclick="testDiscordWebhook()">Test</button>
-                </div>
-            </div>
-            <div class="toggle-row">
-                <input type="checkbox" id="discordOnWarning" checked onchange="saveDiscordSettings()">
-                <label for="discordOnWarning">Notify on warning (before spawn)</label>
-            </div>
-            <div class="toggle-row">
-                <input type="checkbox" id="discordOnSpawn" checked onchange="saveDiscordSettings()">
-                <label for="discordOnSpawn">Notify on spawn</label>
-            </div>
-            <div id="discordStatus"></div>
-        </div>
-
+        <!-- Boss Timers FIRST — visible immediately -->
         <div class="controls-bar">
             <h2>Boss Timers</h2>
             <div style="display:flex;align-items:center;gap:10px;">
@@ -666,7 +573,148 @@
         <div class="boss-list" id="bossList">
             <div class="empty-state">
                 <p>No bosses tracked yet</p>
-                <span>Add a boss above to start tracking</span>
+                <span>Add a boss below to start tracking</span>
+            </div>
+        </div>
+
+        <!-- Add Boss — collapsible -->
+        <div class="add-boss-section">
+            <div class="collapsible-header" onclick="toggleSection('addBossBody', this)">
+                <h2>+ Add Boss</h2>
+                <span class="toggle-arrow">&#9660;</span>
+            </div>
+            <div class="collapsible-body" id="addBossBody">
+                <div class="form-row" style="margin-top:15px;">
+                    <div class="form-group" style="flex:2">
+                        <label>Boss Name</label>
+                        <input type="text" id="bossName" placeholder="e.g. Dragon Lord">
+                    </div>
+                    <div class="form-group">
+                        <label>Spawn Type</label>
+                        <select id="spawnType" onchange="toggleSpawnInputs()">
+                            <option value="interval">Repeating Interval</option>
+                            <option value="fixed">Fixed Time of Day</option>
+                            <option value="weekly">Fixed Day of Week</option>
+                            <option value="biweekly">Twice a Week</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="intervalGroup">
+                        <label>Interval</label>
+                        <div style="display:flex;gap:5px;">
+                            <input type="number" id="intervalHours" placeholder="H" min="0" style="width:55px">
+                            <input type="number" id="intervalMinutes" placeholder="M" min="0" max="59" style="width:55px">
+                        </div>
+                    </div>
+                    <div class="form-group" id="fixedGroup" style="display:none">
+                        <label>Spawn Time</label>
+                        <input type="time" id="fixedTime">
+                    </div>
+                    <div class="form-group" id="weeklyGroup" style="display:none">
+                        <label>Day & Time</label>
+                        <div style="display:flex;gap:5px;">
+                            <select id="weeklyDay">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                            <input type="time" id="weeklyTime">
+                        </div>
+                    </div>
+                    <div class="form-group" id="biweeklyGroup" style="display:none">
+                        <label>Day 1 & Day 2</label>
+                        <div style="display:flex;flex-direction:column;gap:5px;">
+                            <div style="display:flex;gap:5px;">
+                                <select id="biweeklyDay1">
+                                    <option value="0">Sun</option>
+                                    <option value="1">Mon</option>
+                                    <option value="2">Tue</option>
+                                    <option value="3">Wed</option>
+                                    <option value="4">Thu</option>
+                                    <option value="5">Fri</option>
+                                    <option value="6">Sat</option>
+                                </select>
+                                <input type="time" id="biweeklyTime1">
+                            </div>
+                            <div style="display:flex;gap:5px;">
+                                <select id="biweeklyDay2">
+                                    <option value="0">Sun</option>
+                                    <option value="1">Mon</option>
+                                    <option value="2">Tue</option>
+                                    <option value="3">Wed</option>
+                                    <option value="4">Thu</option>
+                                    <option value="5">Fri</option>
+                                    <option value="6">Sat</option>
+                                </select>
+                                <input type="time" id="biweeklyTime2">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Alert (min)</label>
+                        <input type="number" id="alertMinutes" value="5" min="1" max="60" style="width:55px">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="addBoss()">Add</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Connection — collapsible -->
+        <div class="setup-section" id="setupSection">
+            <div class="collapsible-header" onclick="toggleSection('setupBody', this)">
+                <h2>Server Connection</h2>
+                <span class="toggle-arrow">&#9660;</span>
+            </div>
+            <div class="collapsible-body" id="setupBody">
+                <div class="setup-row" style="margin-top:15px;">
+                    <div class="form-group">
+                        <label>Auth Token</label>
+                        <input type="password" id="authToken" placeholder="Your auth token">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="connectServer()">Connect</button>
+                    </div>
+                </div>
+                <div id="setupStatus"></div>
+            </div>
+        </div>
+
+        <!-- Discord Webhook — collapsible -->
+        <div class="discord-section">
+            <div class="collapsible-header" onclick="toggleSection('discordBody', this)">
+                <h2>
+                    <svg class="discord-icon" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                    Discord Webhook
+                </h2>
+                <span class="toggle-arrow">&#9660;</span>
+            </div>
+            <div class="collapsible-body" id="discordBody">
+                <div class="discord-row" style="margin-top:15px;">
+                    <div class="form-group">
+                        <label>Webhook URL</label>
+                        <input type="text" id="discordWebhook" placeholder="https://discord.com/api/webhooks/..." value="">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-discord" onclick="saveDiscordWebhook()">Save</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-discord-test" onclick="testDiscordWebhook()">Test</button>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <input type="checkbox" id="discordOnWarning" checked onchange="saveDiscordSettings()">
+                    <label for="discordOnWarning">Notify on warning (before spawn)</label>
+                </div>
+                <div class="toggle-row">
+                    <input type="checkbox" id="discordOnSpawn" checked onchange="saveDiscordSettings()">
+                    <label for="discordOnSpawn">Notify on spawn</label>
+                </div>
+                <div id="discordStatus"></div>
             </div>
         </div>
     </div>
@@ -766,6 +814,15 @@
             const data = await api('POST', '/api/config/test');
             if (data && data.ok) showToast('Test message sent to Discord');
             else showToast('Test failed - check webhook URL');
+        }
+
+        // --- Collapsible sections ---
+
+        function toggleSection(bodyId, headerEl) {
+            const body = document.getElementById(bodyId);
+            const arrow = headerEl.querySelector('.toggle-arrow');
+            body.classList.toggle('open');
+            arrow.classList.toggle('open');
         }
 
         // --- Audio ---
