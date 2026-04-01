@@ -484,6 +484,39 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
+        /* Setup section */
+        .setup-section {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setup-section h2 {
+            font-size: 1.1em;
+            color: #60a5fa;
+            margin-bottom: 15px;
+        }
+
+        .setup-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .setup-row .form-group { flex: 1; }
+
+        .setup-status {
+            font-size: 0.8em;
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .setup-status.connected { background: #064e3b; color: #34d399; }
+        .setup-status.disconnected { background: #7f1d1d; color: #fca5a5; }
+
         /* Responsive */
         @media (max-width: 600px) {
             .form-row { flex-direction: column; }
@@ -499,6 +532,20 @@
     </div>
 
     <div class="container">
+        <div class="setup-section" id="setupSection">
+            <h2>Server Connection</h2>
+            <div class="setup-row">
+                <div class="form-group">
+                    <label>Auth Token</label>
+                    <input type="password" id="authToken" placeholder="Your auth token">
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="connectServer()">Connect</button>
+                </div>
+            </div>
+            <div id="setupStatus"></div>
+        </div>
+
         <div class="add-boss-section">
             <h2>+ Add Boss</h2>
             <div class="form-row">
@@ -628,81 +675,100 @@
     <div id="deathModal"></div>
 
     <script>
-        let bosses = JSON.parse(localStorage.getItem('anomaly_bosses') || '[]');
+        const API_BASE = 'https://boss-timer.xpropics.workers.dev';
+        let authToken = localStorage.getItem('boss_timer_token') || '';
+        let bosses = [];
         let alertedBosses = new Set();
         let audioCtx = null;
+        let connected = false;
 
-        // Discord webhook
-        let discordSettings = JSON.parse(localStorage.getItem('anomaly_discord') || '{}');
+        // --- API helpers ---
 
-        function initDiscord() {
-            const input = document.getElementById('discordWebhook');
-            if (discordSettings.webhookUrl) {
-                input.value = discordSettings.webhookUrl;
+        async function api(method, path, body) {
+            const opts = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(API_BASE + path, opts);
+            if (res.status === 401) {
+                showToast('Unauthorized - check your token');
+                return null;
             }
-            document.getElementById('discordOnWarning').checked = discordSettings.onWarning !== false;
-            document.getElementById('discordOnSpawn').checked = discordSettings.onSpawn !== false;
-            updateDiscordStatus();
+            return res.json();
         }
 
-        function saveDiscordWebhook() {
+        async function fetchBosses() {
+            const data = await api('GET', '/api/bosses');
+            if (data) bosses = data.bosses || [];
+        }
+
+        // --- Connection ---
+
+        async function connectServer() {
+            authToken = document.getElementById('authToken').value.trim();
+            if (!authToken) { showToast('Enter your auth token'); return; }
+            localStorage.setItem('boss_timer_token', authToken);
+
+            const data = await api('GET', '/api/bosses');
+            if (data) {
+                bosses = data.bosses || [];
+                connected = true;
+                document.getElementById('setupStatus').innerHTML =
+                    '<div class="setup-status connected">Connected to server</div>';
+                showToast('Connected!');
+                renderBosses();
+                initDiscord();
+            } else {
+                document.getElementById('setupStatus').innerHTML =
+                    '<div class="setup-status disconnected">Connection failed</div>';
+            }
+        }
+
+        // --- Discord ---
+
+        async function initDiscord() {
+            const data = await api('GET', '/api/config');
+            if (!data) return;
+            document.getElementById('discordWebhook').value = data.webhookUrl || '';
+            document.getElementById('discordOnWarning').checked = data.onWarning !== false;
+            document.getElementById('discordOnSpawn').checked = data.onSpawn !== false;
+            updateDiscordStatus(data.webhookUrl);
+        }
+
+        async function saveDiscordWebhook() {
             const url = document.getElementById('discordWebhook').value.trim();
-            discordSettings.webhookUrl = url;
-            saveDiscordSettings();
-            updateDiscordStatus();
+            await api('PUT', '/api/config', { webhookUrl: url });
+            updateDiscordStatus(url);
             showToast(url ? 'Discord webhook saved' : 'Discord webhook removed');
         }
 
-        function saveDiscordSettings() {
-            discordSettings.onWarning = document.getElementById('discordOnWarning').checked;
-            discordSettings.onSpawn = document.getElementById('discordOnSpawn').checked;
-            localStorage.setItem('anomaly_discord', JSON.stringify(discordSettings));
+        async function saveDiscordSettings() {
+            await api('PUT', '/api/config', {
+                onWarning: document.getElementById('discordOnWarning').checked,
+                onSpawn: document.getElementById('discordOnSpawn').checked,
+            });
         }
 
-        function updateDiscordStatus() {
+        function updateDiscordStatus(url) {
             const el = document.getElementById('discordStatus');
-            if (discordSettings.webhookUrl) {
+            if (url) {
                 el.innerHTML = '<div class="discord-status connected">Webhook connected</div>';
             } else {
                 el.innerHTML = '<div class="discord-status disconnected">No webhook configured</div>';
             }
         }
 
-        function sendDiscordMessage(title, description, color) {
-            if (!discordSettings.webhookUrl) return;
-
-            const payload = {
-                embeds: [{
-                    title: title,
-                    description: description,
-                    color: color,
-                    footer: { text: 'Anomaly Timer - Boss Timer' },
-                    timestamp: new Date().toISOString()
-                }]
-            };
-
-            fetch(discordSettings.webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).catch(err => {
-                console.error('Discord webhook error:', err);
-                showToast('Discord notification failed');
-            });
+        async function testDiscordWebhook() {
+            const data = await api('POST', '/api/config/test');
+            if (data && data.ok) showToast('Test message sent to Discord');
+            else showToast('Test failed - check webhook URL');
         }
 
-        function testDiscordWebhook() {
-            if (!discordSettings.webhookUrl) {
-                showToast('No webhook URL set');
-                return;
-            }
-            sendDiscordMessage(
-                'Test Notification',
-                'Boss timer webhook is working!',
-                5793266 // Discord blurple
-            );
-            showToast('Test message sent to Discord');
-        }
+        // --- Audio ---
 
         function getAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -713,8 +779,6 @@
             try {
                 const ctx = getAudioContext();
                 const now = ctx.currentTime;
-
-                // Two-tone alert
                 for (let i = 0; i < 3; i++) {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -727,10 +791,10 @@
                     osc.start(now + i * 0.2);
                     osc.stop(now + i * 0.2 + 0.2);
                 }
-            } catch (e) {
-                console.log('Audio not available');
-            }
+            } catch (e) {}
         }
+
+        // --- Boss CRUD ---
 
         function toggleSpawnInputs() {
             const type = document.getElementById('spawnType').value;
@@ -740,114 +804,51 @@
             document.getElementById('biweeklyGroup').style.display = type === 'biweekly' ? '' : 'none';
         }
 
-        function addBoss() {
+        async function addBoss() {
+            if (!connected) { showToast('Connect to server first'); return; }
             const name = document.getElementById('bossName').value.trim();
             if (!name) return;
 
             const type = document.getElementById('spawnType').value;
             const alertMin = parseInt(document.getElementById('alertMinutes').value) || 5;
 
-            let boss = {
-                id: Date.now().toString(),
-                name,
-                type,
-                alertMinutes: alertMin,
-                status: 'waiting', // waiting, spawned, auto-reset
-                spawnedAt: null,
-            };
+            let body = { name, type, alertMinutes: alertMin };
 
             if (type === 'interval') {
                 const h = parseInt(document.getElementById('intervalHours').value) || 0;
                 const m = parseInt(document.getElementById('intervalMinutes').value) || 0;
                 if (h === 0 && m === 0) return;
-                boss.intervalMs = (h * 3600 + m * 60) * 1000;
-                boss.nextSpawn = Date.now() + boss.intervalMs;
+                body.intervalMs = (h * 3600 + m * 60) * 1000;
             } else if (type === 'fixed') {
-                const timeStr = document.getElementById('fixedTime').value;
-                if (!timeStr) return;
-                boss.fixedTime = timeStr;
-                boss.nextSpawn = getNextFixedSpawn(timeStr);
+                body.fixedTime = document.getElementById('fixedTime').value;
+                if (!body.fixedTime) return;
             } else if (type === 'weekly') {
-                const day = parseInt(document.getElementById('weeklyDay').value);
-                const timeStr = document.getElementById('weeklyTime').value;
-                if (!timeStr) return;
-                boss.weeklyDay = day;
-                boss.weeklyTime = timeStr;
-                boss.nextSpawn = getNextWeeklySpawn(day, timeStr);
+                body.weeklyDay = parseInt(document.getElementById('weeklyDay').value);
+                body.weeklyTime = document.getElementById('weeklyTime').value;
+                if (!body.weeklyTime) return;
             } else if (type === 'biweekly') {
                 const day1 = parseInt(document.getElementById('biweeklyDay1').value);
                 const time1 = document.getElementById('biweeklyTime1').value;
                 const day2 = parseInt(document.getElementById('biweeklyDay2').value);
                 const time2 = document.getElementById('biweeklyTime2').value;
                 if (!time1 || !time2) return;
-                boss.biweeklyDays = [{ day: day1, time: time1 }, { day: day2, time: time2 }];
-                boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
+                body.biweeklyDays = [{ day: day1, time: time1 }, { day: day2, time: time2 }];
             }
 
-            bosses.push(boss);
-            saveBosses();
+            await api('POST', '/api/bosses', body);
+            await fetchBosses();
             renderBosses();
 
-            // Reset form
             document.getElementById('bossName').value = '';
             document.getElementById('intervalHours').value = '';
             document.getElementById('intervalMinutes').value = '';
+            showToast(`${name} added`);
         }
 
-        function getNextFixedSpawn(timeStr) {
-            const [h, m] = timeStr.split(':').map(Number);
-            const now = new Date();
-            const spawn = new Date();
-            spawn.setHours(h, m, 0, 0);
-            if (spawn <= now) spawn.setDate(spawn.getDate() + 1);
-            return spawn.getTime();
-        }
-
-        function getNextWeeklySpawn(targetDay, timeStr) {
-            const [h, m] = timeStr.split(':').map(Number);
-            const now = new Date();
-            const spawn = new Date();
-            spawn.setHours(h, m, 0, 0);
-
-            const currentDay = now.getDay();
-            let daysUntil = targetDay - currentDay;
-            if (daysUntil < 0) daysUntil += 7;
-            if (daysUntil === 0 && spawn <= now) daysUntil = 7;
-
-            spawn.setDate(spawn.getDate() + daysUntil);
-            return spawn.getTime();
-        }
-
-        function getNextBiweeklySpawn(days) {
-            const spawns = days.map(d => getNextWeeklySpawn(d.day, d.time));
-            return Math.min(...spawns);
-        }
-
-        function killBoss(id) {
-            killBossAt(id, Date.now());
-        }
-
-        function killBossAt(id, deathTime) {
-            const boss = bosses.find(b => b.id === id);
-            if (!boss) return;
-
-            boss.status = 'waiting';
-            boss.spawnedAt = null;
-            boss.autoResetAt = null;
-            boss.lastDeath = deathTime;
+        async function killBoss(id) {
+            await api('POST', `/api/bosses/${id}/kill`, { deathTime: Date.now() });
             alertedBosses.delete(id);
-
-            if (boss.type === 'interval') {
-                boss.nextSpawn = deathTime + boss.intervalMs;
-            } else if (boss.type === 'fixed') {
-                boss.nextSpawn = getNextFixedSpawn(boss.fixedTime);
-            } else if (boss.type === 'weekly') {
-                boss.nextSpawn = getNextWeeklySpawn(boss.weeklyDay, boss.weeklyTime);
-            } else if (boss.type === 'biweekly') {
-                boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
-            }
-
-            saveBosses();
+            await fetchBosses();
             renderBosses();
         }
 
@@ -885,37 +886,28 @@
             document.getElementById('deathModal').innerHTML = '';
         }
 
-        function confirmDeathTime(id) {
+        async function confirmDeathTime(id) {
             const dateVal = document.getElementById('deathDate').value;
             const timeVal = document.getElementById('deathTime').value;
             if (!dateVal || !timeVal) return;
-
             const deathTime = new Date(`${dateVal}T${timeVal}`).getTime();
             if (isNaN(deathTime)) return;
-
-            killBossAt(id, deathTime);
+            await api('POST', `/api/bosses/${id}/kill`, { deathTime });
+            alertedBosses.delete(id);
+            await fetchBosses();
+            renderBosses();
             closeDeathModal();
             showToast('Death time updated');
         }
 
-        function deleteBoss(id) {
-            bosses = bosses.filter(b => b.id !== id);
+        async function deleteBoss(id) {
+            await api('DELETE', `/api/bosses/${id}`);
             alertedBosses.delete(id);
-            saveBosses();
+            await fetchBosses();
             renderBosses();
         }
 
-        function updateAlertTime(id, value) {
-            const boss = bosses.find(b => b.id === id);
-            if (boss) {
-                boss.alertMinutes = Math.max(1, parseInt(value) || 5);
-                saveBosses();
-            }
-        }
-
-        function saveBosses() {
-            localStorage.setItem('anomaly_bosses', JSON.stringify(bosses));
-        }
+        // --- Display ---
 
         function formatTime(ms) {
             if (ms <= 0) return '00:00';
@@ -923,9 +915,7 @@
             const h = Math.floor(totalSec / 3600);
             const m = Math.floor((totalSec % 3600) / 60);
             const s = totalSec % 60;
-            if (h > 0) {
-                return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-            }
+            if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
             return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }
 
@@ -967,7 +957,6 @@
                 return;
             }
 
-            // Filter by search
             const search = (document.getElementById('bossSearch').value || '').toLowerCase();
             const filtered = search ? bosses.filter(b => b.name.toLowerCase().includes(search)) : bosses;
 
@@ -976,9 +965,7 @@
                 return;
             }
 
-            // Sort by next spawn time
             const sorted = [...filtered].sort((a, b) => {
-                // Spawned bosses go to top
                 if (a.status === 'spawned' && b.status !== 'spawned') return -1;
                 if (b.status === 'spawned' && a.status !== 'spawned') return 1;
                 return a.nextSpawn - b.nextSpawn;
@@ -1003,14 +990,6 @@
                     countdownClass = 'boss-countdown spawned';
                     countdownText = 'SPAWNED';
                     statusBadge = '<span class="status-badge spawned">Spawned!</span>';
-
-                    if (boss.status === 'auto-reset') {
-                        const autoRemaining = boss.autoResetAt - now;
-                        if (autoRemaining > 0) {
-                            countdownText = `RESET ${formatTime(autoRemaining)}`;
-                            statusBadge = '<span class="status-badge auto-reset">Auto-reset</span>';
-                        }
-                    }
                 } else if (isWarning) {
                     countdownClass = 'boss-countdown warning-text';
                 }
@@ -1034,75 +1013,50 @@
             }).join('');
         }
 
+        // --- Tick: update countdowns + local alerts ---
+
         function tick() {
+            if (!connected) return;
             const now = Date.now();
 
             bosses.forEach(boss => {
                 const remaining = boss.nextSpawn - now;
                 const alertMs = boss.alertMinutes * 60000;
 
-                // Warning alert
-                if (remaining > 0 && remaining <= alertMs && !alertedBosses.has(boss.id)) {
-                    alertedBosses.add(boss.id);
+                if (remaining > 0 && remaining <= alertMs && !alertedBosses.has(boss.id + '_warn')) {
+                    alertedBosses.add(boss.id + '_warn');
                     playAlertSound();
                     showToast(`${boss.name} spawns in ${boss.alertMinutes} minutes!`);
-                    if (discordSettings.onWarning !== false) {
-                        sendDiscordMessage(
-                            `${boss.name} - Spawning Soon!`,
-                            `**${boss.name}** spawns in **${boss.alertMinutes} minutes**!\n${formatMeta(boss)}`,
-                            16760576 // orange/yellow
-                        );
-                    }
                 }
 
-                // Boss has spawned
-                if (remaining <= 0 && boss.status === 'waiting') {
-                    boss.status = 'spawned';
-                    boss.spawnedAt = now;
-                    boss.autoResetAt = now + 5 * 60000; // 5 min auto-reset
+                if (remaining <= 0 && !alertedBosses.has(boss.id + '_spawn')) {
+                    alertedBosses.add(boss.id + '_spawn');
                     playAlertSound();
                     showToast(`${boss.name} has SPAWNED!`);
-                    if (discordSettings.onSpawn !== false) {
-                        sendDiscordMessage(
-                            `${boss.name} has SPAWNED!`,
-                            `**${boss.name}** is now available!\n${formatMeta(boss)}\nAuto-reset in 5 minutes if not killed.`,
-                            15548997 // red
-                        );
-                    }
-                }
-
-                // Auto-reset after 5 minutes
-                if (boss.status === 'spawned' && boss.autoResetAt && now >= boss.autoResetAt) {
-                    boss.status = 'waiting';
-                    boss.spawnedAt = null;
-                    boss.autoResetAt = null;
-                    alertedBosses.delete(boss.id);
-
-                    if (boss.type === 'interval') {
-                        boss.nextSpawn = now + boss.intervalMs;
-                    } else if (boss.type === 'fixed') {
-                        boss.nextSpawn = getNextFixedSpawn(boss.fixedTime);
-                    } else if (boss.type === 'weekly') {
-                        boss.nextSpawn = getNextWeeklySpawn(boss.weeklyDay, boss.weeklyTime);
-                    } else if (boss.type === 'biweekly') {
-                        boss.nextSpawn = getNextBiweeklySpawn(boss.biweeklyDays);
-                    }
-
-                    saveBosses();
                 }
             });
 
             renderBosses();
         }
 
-        // Initial render
-        initDiscord();
-        renderBosses();
+        // --- Init ---
 
-        // Update every second
+        // Auto-connect if token saved
+        if (authToken) {
+            document.getElementById('authToken').value = authToken;
+            connectServer();
+        }
+
+        // Refresh from server every 10 seconds
+        setInterval(async () => {
+            if (!connected) return;
+            await fetchBosses();
+        }, 10000);
+
+        // Update display every second
         setInterval(tick, 1000);
 
-        // Enable audio on first interaction
+        // Enable audio on first click
         document.addEventListener('click', () => {
             if (!audioCtx) getAudioContext();
         }, { once: true });
