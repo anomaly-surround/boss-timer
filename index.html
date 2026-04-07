@@ -541,6 +541,26 @@
             color: #e0e6f0;
         }
 
+        .btn-export {
+            background: #1e3a5f;
+            color: #60a5fa;
+            border: 1px solid #2563eb44;
+            font-size: 0.8em;
+            padding: 6px 12px;
+        }
+
+        .btn-export:hover { background: #1e4070; }
+
+        .btn-import {
+            background: #1e3a2f;
+            color: #4ade80;
+            border: 1px solid #22c55e44;
+            font-size: 0.8em;
+            padding: 6px 12px;
+        }
+
+        .btn-import:hover { background: #1e4a3a; }
+
         /* Collapsible sections */
         .collapsible-header {
             display: flex;
@@ -670,8 +690,11 @@
         <!-- Boss Timers -->
         <div class="controls-bar">
             <h2>Boss Timers</h2>
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <input type="text" id="bossSearch" placeholder="Search bosses..." oninput="renderBosses()" style="background:#1e293b;border:1px solid #334155;color:#e0e6f0;padding:6px 12px;border-radius:6px;font-size:0.85em;width:180px;">
+                <button class="btn btn-export" onclick="exportBosses()" title="Export boss data">Export</button>
+                <button class="btn btn-import" onclick="document.getElementById('importFile').click()" title="Import boss data">Import</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBosses(event)">
                 <span class="sort-indicator">Sorted by next spawn</span>
             </div>
         </div>
@@ -970,7 +993,7 @@
             document.getElementById('deathModal').innerHTML = `
                 <div class="modal-overlay" onclick="closeDeathModal(event)">
                     <div class="modal" onclick="event.stopPropagation()">
-                        <h3>Set Death Time: ${boss.name}</h3>
+                        <h3>Set Death Time: ${esc(boss.name)}</h3>
                         <div class="form-group">
                             <label>Date</label>
                             <input type="date" id="deathDate" value="${defaultDate}">
@@ -1012,6 +1035,119 @@
             alertedBosses.delete(id);
             await fetchBosses();
             renderBosses();
+        }
+
+        // --- Export / Import ---
+
+        function exportBosses() {
+            if (!connected || bosses.length === 0) { showToast('No bosses to export'); return; }
+
+            const exportData = {
+                version: 1,
+                exportedAt: Date.now(),
+                bosses: bosses.map(b => {
+                    const entry = {
+                        name: b.name,
+                        type: b.type,
+                        alertMinutes: b.alertMinutes,
+                        lastDeath: b.lastDeath || null,
+                    };
+                    if (b.type === 'interval') entry.intervalMs = b.intervalMs;
+                    if (b.type === 'fixed') entry.fixedTime = b.fixedTime;
+                    if (b.type === 'weekly') { entry.weeklyDay = b.weeklyDay; entry.weeklyTime = b.weeklyTime; }
+                    if (b.type === 'biweekly') entry.biweeklyDays = b.biweeklyDays;
+                    return entry;
+                }),
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `boss-timers-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${bosses.length} boss(es)`);
+        }
+
+        async function importBosses(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = '';
+
+            if (!connected) { showToast('Connect to server first'); return; }
+            if (userRole !== 'admin') { showToast('Admin access required to import'); return; }
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (!data.bosses || !Array.isArray(data.bosses)) {
+                    showToast('Invalid file format'); return;
+                }
+
+                const count = data.bosses.length;
+                if (count === 0) { showToast('No bosses in file'); return; }
+
+                // Confirm before importing
+                const existing = bosses.map(b => b.name.toLowerCase());
+                const dupes = data.bosses.filter(b => existing.includes(b.name.toLowerCase()));
+                let msg = `Import ${count} boss(es)?`;
+                if (dupes.length > 0) msg += `\n${dupes.length} already exist and will be skipped.`;
+                if (!confirm(msg)) return;
+
+                let added = 0;
+                const validTypes = ['interval', 'fixed', 'weekly', 'biweekly'];
+                for (const b of data.bosses) {
+                    // Validate required fields
+                    if (!b.name || typeof b.name !== 'string' || !validTypes.includes(b.type)) continue;
+                    if (b.name.length > 100) continue;
+
+                    // Skip duplicates
+                    if (existing.includes(b.name.toLowerCase())) continue;
+
+                    // Build the boss creation body
+                    const body = {
+                        name: b.name,
+                        type: b.type,
+                        alertMinutes: b.alertMinutes || 5,
+                    };
+                    if (b.type === 'interval') body.intervalMs = b.intervalMs;
+                    if (b.type === 'fixed') body.fixedTime = b.fixedTime;
+                    if (b.type === 'weekly') { body.weeklyDay = b.weeklyDay; body.weeklyTime = b.weeklyTime; }
+                    if (b.type === 'biweekly') body.biweeklyDays = b.biweeklyDays;
+
+                    const result = await api('POST', '/api/bosses', body);
+
+                    // If the boss has a lastDeath, recalculate timer from that death time
+                    if (result && result.boss && b.lastDeath) {
+                        recentlyAdded.add(result.boss.id);
+                        alertedBosses.add(result.boss.id + '_warn');
+                        alertedBosses.add(result.boss.id + '_spawn');
+                        await api('POST', `/api/bosses/${result.boss.id}/kill`, { deathTime: b.lastDeath });
+                        setTimeout(() => {
+                            recentlyAdded.delete(result.boss.id);
+                            alertedBosses.delete(result.boss.id + '_warn');
+                            alertedBosses.delete(result.boss.id + '_spawn');
+                        }, 5000);
+                    }
+                    added++;
+                }
+
+                await fetchBosses();
+                renderBosses();
+                showToast(`Imported ${added} boss(es)${dupes.length ? `, skipped ${dupes.length} duplicate(s)` : ''}`);
+            } catch (e) {
+                showToast('Failed to import: ' + e.message);
+            }
+        }
+
+        // --- Sanitization ---
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
         }
 
         // --- Display ---
@@ -1106,7 +1242,7 @@
                 return `
                     <div class="${cardClass}" data-id="${boss.id}">
                         <div class="boss-info">
-                            <div class="boss-name">${boss.name}</div>
+                            <div class="boss-name">${esc(boss.name)}</div>
                             <div class="boss-meta">${formatMeta(boss)} | Alert: ${boss.alertMinutes}m before</div>
                             ${boss.lastDeath ? `<div class="death-info">Last killed: ${new Date(boss.lastDeath).toLocaleString()}</div>` : ''}
                         </div>
